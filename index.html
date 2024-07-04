@@ -35,6 +35,27 @@
             border: none;
             border-radius: 5px;
         }
+        #controls {
+            position: absolute;
+            bottom: 10px;
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+        }
+        .control-button {
+            width: 50px;
+            height: 50px;
+            font-size: 24px;
+            background-color: #32CD32;
+            border: none;
+            border-radius: 50%;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+        }
     </style>
 </head>
 <body>
@@ -43,11 +64,18 @@
         <button onclick="startGame()">Start Game</button>
     </div>
     <canvas id="gameCanvas"></canvas>
-    <audio id="gameAudio" src="KI_Pfeffi.m4a" loop autoplay></audio>
+    <div id="controls" style="display: none;">
+        <button class="control-button" id="leftButton">◀</button>
+        <button class="control-button" id="rightButton">▶</button>
+    </div>
+    <audio id="gameAudio" src="KI_Pfeffi.m4a" loop></audio>
     <script>
         const canvas = document.getElementById('gameCanvas');
         const context = canvas.getContext('2d');
         const audio = document.getElementById('gameAudio');
+        const leftButton = document.getElementById('leftButton');
+        const rightButton = document.getElementById('rightButton');
+        const controls = document.getElementById('controls');
 
         canvas.width = window.innerWidth;
         canvas.height = window.innerHeight;
@@ -185,6 +213,7 @@
         function startGame() {
             document.getElementById('menu').style.display = 'none';
             canvas.style.display = 'block';
+            controls.style.display = 'flex';
             player.autoMove = false;
 
             clearInterval(menuAnimationInterval);
@@ -228,14 +257,28 @@
             menuBottleInterval = setInterval(generateBottle, 3000);
         }
 
+        leftButton.addEventListener('touchstart', () => {
+            player.autoMove = false;
+            player.x -= player.speed;
+            player.direction = 'left';
+        });
+
+        rightButton.addEventListener('touchstart', () => {
+            player.autoMove = false;
+            player.x += player.speed;
+            player.direction = 'right';
+        });
+
         window.addEventListener('keydown', movePlayer);
         window.addEventListener('touchstart', handleTouchStart);
         window.onload = () => {
-            audio.play().catch((error) => {
-                console.error("Audio playback failed:", error);
-            });
             startMenuAnimation();
         };
+
+        // Start audio immediately when the script runs
+        audio.play().catch((error) => {
+            console.error("Audio playback failed:", error);
+        });
     </script>
 </body>
 </html>
