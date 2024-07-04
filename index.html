@@ -8,6 +8,7 @@
         body {
             margin: 0;
             overflow: hidden;
+            font-family: Arial, sans-serif;
         }
         canvas {
             display: block;
@@ -19,15 +20,14 @@
             transform: translate(-50%, -50%);
             text-align: center;
             color: #32CD32; /* Pfeffi-Grün */
-            font-family: Arial, sans-serif;
         }
         #menu h1 {
-            font-size: 48px;
+            font-size: 36px;
             margin-bottom: 20px;
             text-shadow: 2px 2px 0 #000, -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000, 0 2px 0 #000, 2px 0 0 #000, 0 -2px 0 #000, -2px 0 0 #000; /* Schwarze Outline */
         }
         #menu button {
-            font-size: 24px;
+            font-size: 18px;
             padding: 10px 20px;
             cursor: pointer;
             color: white;
@@ -53,19 +53,19 @@
         canvas.height = window.innerHeight;
 
         const player = {
-            width: 100, // Doppelte Größe
-            height: 100, // Doppelte Größe
-            x: canvas.width / 2 - 50, // Angepasst an die neue Größe
-            y: canvas.height - 200, // Angepasst an die neue Größe
-            speed: 15, // Schnelleres Laufen
+            width: 100,
+            height: 100,
+            x: canvas.width / 2 - 50,
+            y: canvas.height - 200,
+            speed: 15,
             image: new Image(),
             direction: 'right',
             autoMove: true
         };
         player.image.src = 'Ringo.png';
 
-        const bottleWidth = 40; // Doppelte Größe
-        const bottleHeight = 80; // Doppelte Größe
+        const bottleWidth = 40;
+        const bottleHeight = 80;
         const bottleImage = new Image();
         bottleImage.src = 'Pfeffi.png';
 
@@ -73,7 +73,7 @@
         backgroundImage.src = 'Background.png';
 
         const bottles = [];
-        const bottleSpeed = 3; // Langsameres Fallen
+        const bottleSpeed = 3;
 
         let score = 0;
         let gameTime = 30;
@@ -104,9 +104,9 @@
 
         function drawScore() {
             context.fillStyle = '#32CD32'; // Pfeffi-Grün
-            context.font = '30px Arial';
-            context.fillText('Score: ' + score, 10, 50);
-            context.fillText('Time: ' + gameTime, canvas.width - 150, 50);
+            context.font = '24px Arial';
+            context.fillText('Score: ' + score, 10, 30);
+            context.fillText('Time: ' + gameTime, canvas.width - 120, 30);
         }
 
         function updateBottles() {
@@ -142,12 +142,23 @@
         }
 
         function movePlayer(event) {
-            player.autoMove = false; // Disable auto movement once player controls
+            player.autoMove = false;
             if ((event.key === 'ArrowLeft' || event.key === 'a') && player.x > 0) {
                 player.x -= player.speed;
                 player.direction = 'left';
             }
             if ((event.key === 'ArrowRight' || event.key === 'd') && player.x + player.width < canvas.width) {
+                player.x += player.speed;
+                player.direction = 'right';
+            }
+        }
+
+        function handleTouchStart(event) {
+            const touch = event.touches[0];
+            if (touch.clientX < canvas.width / 2) {
+                player.x -= player.speed;
+                player.direction = 'left';
+            } else {
                 player.x += player.speed;
                 player.direction = 'right';
             }
@@ -218,8 +229,11 @@
         }
 
         window.addEventListener('keydown', movePlayer);
+        window.addEventListener('touchstart', handleTouchStart);
         window.onload = () => {
-            audio.play();
+            audio.play().catch((error) => {
+                console.error("Audio playback failed:", error);
+            });
             startMenuAnimation();
         };
     </script>
