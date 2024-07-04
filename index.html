@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rodeo Pfeffi Challenge</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+        }
+        canvas {
+            display: block;
+        }
+        #menu {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            color: #32CD32; /* Pfeffi-Grün */
+            font-family: Arial, sans-serif;
+        }
+        #menu h1 {
+            font-size: 48px;
+            margin-bottom: 20px;
+            text-shadow: 2px 2px 0 #000, -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000, 0 2px 0 #000, 2px 0 0 #000, 0 -2px 0 #000, -2px 0 0 #000; /* Schwarze Outline */
+        }
+        #menu button {
+            font-size: 24px;
+            padding: 10px 20px;
+            cursor: pointer;
+            color: white;
+            background-color: #32CD32; /* Pfeffi-Grün */
+            border: none;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div id="menu">
+        <h1>Rodeo Pfeffi Challenge</h1>
+        <button onclick="startGame()">Start Game</button>
+    </div>
+    <canvas id="gameCanvas"></canvas>
+    <audio id="gameAudio" src="KI_Pfeffi.m4a" loop autoplay></audio>
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const context = canvas.getContext('2d');
+        const audio = document.getElementById('gameAudio');
+
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        const player = {
+            width: 100, // Doppelte Größe
+            height: 100, // Doppelte Größe
+            x: canvas.width / 2 - 50, // Angepasst an die neue Größe
+            y: canvas.height - 200, // Angepasst an die neue Größe
+            speed: 15, // Schnelleres Laufen
+            image: new Image(),
+            direction: 'right',
+            autoMove: true
+        };
+        player.image.src = 'Ringo.png';
+
+        const bottleWidth = 40; // Doppelte Größe
+        const bottleHeight = 80; // Doppelte Größe
+        const bottleImage = new Image();
+        bottleImage.src = 'Pfeffi.png';
+
+        const backgroundImage = new Image();
+        backgroundImage.src = 'Background.png';
+
+        const bottles = [];
+        const bottleSpeed = 3; // Langsameres Fallen
+
+        let score = 0;
+        let gameTime = 30;
+        let gameInterval;
+        let bottleInterval;
+        let menuAnimationInterval;
+        let directionChangeInterval;
+        let menuBottleInterval;
+
+        function drawPlayer() {
+            context.save();
+            if (player.direction === 'left') {
+                context.scale(-1, 1);
+                context.drawImage(player.image, -player.x - player.width, player.y, player.width, player.height);
+            } else {
+                context.drawImage(player.image, player.x, player.y, player.width, player.height);
+            }
+            context.restore();
+        }
+
+        function drawBottle(bottle) {
+            context.drawImage(bottleImage, bottle.x, bottle.y, bottleWidth, bottleHeight);
+        }
+
+        function drawBackground() {
+            context.drawImage(backgroundImage, 0, 0, canvas.width, canvas.height);
+        }
+
+        function drawScore() {
+            context.fillStyle = '#32CD32'; // Pfeffi-Grün
+            context.font = '30px Arial';
+            context.fillText('Score: ' + score, 10, 50);
+            context.fillText('Time: ' + gameTime, canvas.width - 150, 50);
+        }
+
+        function updateBottles() {
+            for (let i = 0; i < bottles.length; i++) {
+                bottles[i].y += bottleSpeed;
+
+                if (bottles[i].y > canvas.height - 50) {
+                    bottles.splice(i, 1);
+                    i--;
+                } else if (bottles[i].x < player.x + player.width &&
+                    bottles[i].x + bottleWidth > player.x &&
+                    bottles[i].y < player.y + player.height &&
+                    bottles[i].y + bottleHeight > player.y) {
+                    score++;
+                    bottles.splice(i, 1);
+                    i--;
+                }
+            }
+        }
+
+        function generateBottle() {
+            const x = Math.random() * (canvas.width - bottleWidth);
+            bottles.push({ x: x, y: 0 });
+        }
+
+        function update() {
+            context.clearRect(0, 0, canvas.width, canvas.height);
+            drawBackground();
+            drawPlayer();
+            updateBottles();
+            bottles.forEach(drawBottle);
+            drawScore();
+        }
+
+        function movePlayer(event) {
+            player.autoMove = false; // Disable auto movement once player controls
+            if ((event.key === 'ArrowLeft' || event.key === 'a') && player.x > 0) {
+                player.x -= player.speed;
+                player.direction = 'left';
+            }
+            if ((event.key === 'ArrowRight' || event.key === 'd') && player.x + player.width < canvas.width) {
+                player.x += player.speed;
+                player.direction = 'right';
+            }
+        }
+
+        function randomMovePlayer() {
+            if (player.autoMove) {
+                if (player.direction === 'left') {
+                    player.x -= player.speed;
+                    if (player.x < 0) {
+                        player.x = 0;
+                        player.direction = 'right';
+                    }
+                } else {
+                    player.x += player.speed;
+                    if (player.x + player.width > canvas.width) {
+                        player.x = canvas.width - player.width;
+                        player.direction = 'left';
+                    }
+                }
+            }
+        }
+
+        function startGame() {
+            document.getElementById('menu').style.display = 'none';
+            canvas.style.display = 'block';
+            player.autoMove = false;
+
+            clearInterval(menuAnimationInterval);
+            clearInterval(directionChangeInterval);
+            clearInterval(menuBottleInterval);
+
+            gameInterval = setInterval(() => {
+                gameTime--;
+                if (gameTime <= 0) {
+                    clearInterval(gameInterval);
+                    clearInterval(bottleInterval);
+                    alert('Game Over! Your score: ' + score);
+                    document.location.reload();
+                }
+            }, 1000);
+
+            bottleInterval = setInterval(generateBottle, 1000);
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        function gameLoop() {
+            update();
+            requestAnimationFrame(gameLoop);
+        }
+
+        function startMenuAnimation() {
+            directionChangeInterval = setInterval(() => {
+                player.direction = (player.direction === 'left') ? 'right' : 'left';
+            }, 2000);
+
+            menuAnimationInterval = setInterval(() => {
+                context.clearRect(0, 0, canvas.width, canvas.height);
+                drawBackground();
+                randomMovePlayer();
+                drawPlayer();
+                updateBottles();
+                bottles.forEach(drawBottle);
+            }, 100);
+
+            menuBottleInterval = setInterval(generateBottle, 3000);
+        }
+
+        window.addEventListener('keydown', movePlayer);
+        window.onload = () => {
+            audio.play();
+            startMenuAnimation();
+        };
+    </script>
+</body>
+</html>
