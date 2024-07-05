@@ -56,6 +56,27 @@
             justify-content: center;
             cursor: pointer;
         }
+        #alkometer {
+            position: absolute;
+            top: 50px;
+            right: 10px;
+            width: 200px;
+            height: 30px;
+            border: 2px solid #32CD32;
+        }
+        #alkometer-fill {
+            width: 0;
+            height: 100%;
+            background-color: #32CD32;
+        }
+        #alkometer-label {
+            position: absolute;
+            top: 20px;
+            right: 10px;
+            color: #32CD32;
+            font-size: 18px;
+            text-shadow: 2px 2px 0 #000, -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000, 0 2px 0 #000, 2px 0 0 #000, 0 -2px 0 #000, -2px 0 0 #000;
+        }
     </style>
 </head>
 <body>
@@ -67,28 +88,44 @@
     <div id="controls" style="display: none;">
         <button class="control-button" id="leftButton">◀</button>
         <button class="control-button" id="rightButton">▶</button>
+        <button class="control-button" id="jumpButton">⮝</button>
     </div>
-    <audio id="gameAudio" src="KI_Pfeffi.m4a" loop></audio>
+    <div id="alkometer-label">Alk-O-Meter</div>
+    <div id="alkometer">
+        <div id="alkometer-fill"></div>
+    </div>
+    <audio id="gameAudio" src="KI_Pfeffi.m4a" loop autoplay></audio>
     <script>
         const canvas = document.getElementById('gameCanvas');
         const context = canvas.getContext('2d');
         const audio = document.getElementById('gameAudio');
         const leftButton = document.getElementById('leftButton');
         const rightButton = document.getElementById('rightButton');
+        const jumpButton = document.getElementById('jumpButton');
         const controls = document.getElementById('controls');
+        const alkometerFill = document.getElementById('alkometer-fill');
 
         canvas.width = window.innerWidth;
         canvas.height = window.innerHeight;
+
+        const levelWidth = 3000; // Breite des Levels
+        let cameraX = 0; // Kamera-Position
 
         const player = {
             width: 100,
             height: 100,
             x: canvas.width / 2 - 50,
-            y: canvas.height - 200,
+            y: canvas.height - 200, // Startposition
             speed: 15,
+            jumpPower: 25, // Erhöhte Sprungkraft
+            gravity: 1.5, // Angepasste Schwerkraft für eine realistischere Flugbahn
+            velocityY: 0,
+            velocityX: 0, // Horizontale Geschwindigkeit
+            onGround: true,
             image: new Image(),
             direction: 'right',
-            autoMove: true
+            autoMove: true,
+            torkelAmount: 0
         };
         player.image.src = 'Ringo.png';
 
@@ -100,11 +137,15 @@
         const backgroundImage = new Image();
         backgroundImage.src = 'Background.png';
 
+        const drunkImage = new Image();
+        drunkImage.src = 'drunk1.png';
+
         const bottles = [];
+        const drunks = [];
         const bottleSpeed = 3;
 
         let score = 0;
-        let gameTime = 30;
+        let gameTime = 90; // 1,5 Minuten (90 Sekunden)
         let gameInterval;
         let bottleInterval;
         let menuAnimationInterval;
@@ -113,6 +154,7 @@
 
         function drawPlayer() {
             context.save();
+            context.translate(-cameraX, 0); // Verschiebe die Kamera
             if (player.direction === 'left') {
                 context.scale(-1, 1);
                 context.drawImage(player.image, -player.x - player.width, player.y, player.width, player.height);
@@ -123,18 +165,31 @@
         }
 
         function drawBottle(bottle) {
+            context.save();
+            context.translate(-cameraX, 0); // Verschiebe die Kamera
             context.drawImage(bottleImage, bottle.x, bottle.y, bottleWidth, bottleHeight);
+            context.restore();
+        }
+
+        function drawDrunk(drunk) {
+            context.save();
+            context.translate(-cameraX, 0); // Verschiebe die Kamera
+            context.drawImage(drunkImage, drunk.x, drunk.y, drunk.width, drunk.height);
+            context.restore();
         }
 
         function drawBackground() {
-            context.drawImage(backgroundImage, 0, 0, canvas.width, canvas.height);
+            context.save();
+            context.translate(-cameraX, 0); // Verschiebe die Kamera
+            context.drawImage(backgroundImage, 0, 0, levelWidth, canvas.height);
+            context.restore();
         }
 
         function drawScore() {
             context.fillStyle = '#32CD32'; // Pfeffi-Grün
             context.font = '24px Arial';
             context.fillText('Score: ' + score, 10, 30);
-            context.fillText('Time: ' + gameTime, canvas.width - 120, 30);
+            context.fillText('Time: ' + gameTime, 10, 60);
         }
 
         function updateBottles() {
@@ -149,6 +204,7 @@
                     bottles[i].y < player.y + player.height &&
                     bottles[i].y + bottleHeight > player.y) {
                     score++;
+                    updateAlkometer();
                     bottles.splice(i, 1);
                     i--;
                 }
@@ -156,8 +212,15 @@
         }
 
         function generateBottle() {
-            const x = Math.random() * (canvas.width - bottleWidth);
+            const x = Math.random() * (levelWidth - bottleWidth);
             bottles.push({ x: x, y: 0 });
+        }
+
+        function generateDrunks() {
+            for (let i = 0; i < 5; i++) {
+                const x = Math.random() * (levelWidth - player.width);
+                drunks.push({ x: x, y: canvas.height - 170, width: 70, height: 70 }); // 30% kleiner und weiter unten
+            }
         }
 
         function update() {
@@ -166,30 +229,59 @@
             drawPlayer();
             updateBottles();
             bottles.forEach(drawBottle);
+            drunks.forEach(drawDrunk);
             drawScore();
+            applyGravity();
+            checkCollisions();
+        }
+
+        function updateAlkometer() {
+            const fillPercentage = Math.min(score / 30, 1);
+            alkometerFill.style.width = (fillPercentage * 100) + '%';
+            player.torkelAmount = fillPercentage * 20; // Drastisches Torkeln
         }
 
         function movePlayer(event) {
             player.autoMove = false;
-            if ((event.key === 'ArrowLeft' || event.key === 'a') && player.x > 0) {
-                player.x -= player.speed;
+            let moveAmount = player.speed;
+            if (event.key === 'ArrowLeft' || event.key === 'a') {
+                player.x -= moveAmount;
                 player.direction = 'left';
             }
-            if ((event.key === 'ArrowRight' || event.key === 'd') && player.x + player.width < canvas.width) {
-                player.x += player.speed;
+            if (event.key === 'ArrowRight' || event.key === 'd') {
+                player.x += moveAmount;
                 player.direction = 'right';
+            }
+            if ((event.key === ' ' || event.key === 'Space') && player.onGround) {
+                jump();
+            }
+            updateCamera();
+        }
+
+        function jump() {
+            if (player.onGround) {
+                player.velocityY = -player.jumpPower;
+                player.velocityX = player.direction === 'left' ? -player.speed : player.speed;
+                player.onGround = false;
             }
         }
 
         function handleTouchStart(event) {
             const touch = event.touches[0];
+            player.autoMove = false;
+            let moveAmount = player.speed;
             if (touch.clientX < canvas.width / 2) {
-                player.x -= player.speed;
+                player.x -= moveAmount;
                 player.direction = 'left';
             } else {
-                player.x += player.speed;
+                player.x += moveAmount;
                 player.direction = 'right';
             }
+            updateCamera();
+        }
+
+        function updateCamera() {
+            cameraX = Math.max(0, Math.min(player.x - canvas.width / 2 + player.width / 2, levelWidth - canvas.width));
         }
 
         function randomMovePlayer() {
@@ -202,10 +294,49 @@
                     }
                 } else {
                     player.x += player.speed;
-                    if (player.x + player.width > canvas.width) {
-                        player.x = canvas.width - player.width;
+                    if (player.x + player.width > levelWidth) {
+                        player.x = levelWidth - player.width;
                         player.direction = 'left';
                     }
+                }
+                updateCamera();
+            }
+        }
+
+        function applyGravity() {
+            if (!player.onGround) {
+                player.y += player.velocityY;
+                player.x += player.velocityX; // Bewege den Spieler horizontal
+                player.velocityY += player.gravity;
+                if (player.y >= canvas.height - 200) { // Bodenposition
+                    player.y = canvas.height - 200; // Anfangsposition bei Landung
+                    player.onGround = true;
+                    player.velocityY = 0;
+                    player.velocityX = 0; // Setze die horizontale Geschwindigkeit zurück
+                }
+            }
+        }
+
+        function torkel() {
+            if (score > 0) {
+                player.x += (Math.random() - 0.5) * player.torkelAmount;
+                updateCamera();
+            }
+        }
+
+        function checkCollisions() {
+            for (let i = 0; i < drunks.length; i++) {
+                if (player.x < drunks[i].x + drunks[i].width &&
+                    player.x + player.width > drunks[i].x &&
+                    player.y < drunks[i].y + drunks[i].height &&
+                    player.y + player.height > drunks[i].y) {
+                    // Collision detected, handle it (e.g., prevent further movement)
+                    if (player.direction === 'left') {
+                        player.x = drunks[i].x + drunks[i].width;
+                    } else {
+                        player.x = drunks[i].x - player.width;
+                    }
+                    updateCamera();
                 }
             }
         }
@@ -231,6 +362,9 @@
             }, 1000);
 
             bottleInterval = setInterval(generateBottle, 1000);
+            generateDrunks();
+
+            setInterval(torkel, 100); // Torkeln alle 100ms
 
             requestAnimationFrame(gameLoop);
         }
@@ -261,24 +395,26 @@
             player.autoMove = false;
             player.x -= player.speed;
             player.direction = 'left';
+            updateCamera();
         });
 
         rightButton.addEventListener('touchstart', () => {
             player.autoMove = false;
             player.x += player.speed;
             player.direction = 'right';
+            updateCamera();
         });
+
+        jumpButton.addEventListener('touchstart', jump);
 
         window.addEventListener('keydown', movePlayer);
         window.addEventListener('touchstart', handleTouchStart);
         window.onload = () => {
+            audio.play().catch((error) => {
+                console.error("Audio playback failed:", error);
+            });
             startMenuAnimation();
         };
-
-        // Start audio immediately when the script runs
-        audio.play().catch((error) => {
-            console.error("Audio playback failed:", error);
-        });
     </script>
 </body>
 </html>
