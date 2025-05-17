@@ -1,421 +1,428 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Rodeo Pfeffi Challenge</title>
-    <style>
-        body { margin: 0; overflow: hidden; font-family: Arial, sans-serif; background: #121212; }
-        canvas { display: block; }
-        #menu {
-            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            text-align: center; color: #32CD32;
-        }
-        #menu h1 {
-            font-size: 36px; margin-bottom: 20px;
-            text-shadow: 2px 2px 0 #000, -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000;
-        }
-        #menu button {
-            font-size: 18px; padding: 10px 20px; cursor: pointer; color: white;
-            background-color: #32CD32; border: none; border-radius: 5px;
-        }
-        #controls {
-            position: absolute; bottom: 10px; width: 100%; display: flex;
-            justify-content: center; gap: 20px; z-index: 20;
-        }
-        .control-button {
-            width: 50px; height: 50px; font-size: 24px; background-color: #32CD32;
-            border: none; border-radius: 50%; color: white; display: flex;
-            align-items: center; justify-content: center; cursor: pointer;
-        }
-        #alkometer {
-            position: absolute; top: 50px; right: 10px; width: 200px; height: 30px;
-            border: 2px solid #32CD32; background: #222; border-radius: 10px;
-        }
-        #alkometer-fill {
-            height: 100%; background-color: #32CD32;
-            border-radius: 8px 0 0 8px; width: 0;
-            transition: width 0.3s cubic-bezier(.44,1.32,.81,1); /* smooth fill */
-        }
-        #alkometer-label {
-            position: absolute; top: 20px; right: 10px; color: #32CD32;
-            font-size: 18px; text-shadow: 2px 2px 0 #000, -2px -2px 0 #000;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <title>Pfeffi Challenge 2.0</title>
+  <style>
+    html,body {margin:0;padding:0;background:#181e19;}
+    body {font-family:sans-serif;}
+    #menu, #gameover, #loading {
+      position:absolute;top:0;left:0;width:100vw;height:100vh;display:flex;
+      flex-direction:column;justify-content:center;align-items:center;z-index:5;
+      background:rgba(0,0,0,0.6);
+    }
+    #menu h1, #gameover h1 {color:#32CD32;text-shadow:2px 2px 0 #000;}
+    #menu button, #gameover button {
+      font-size:20px;padding:12px 32px;margin:12px;border-radius:8px;
+      border:none;background:#32CD32;color:#fff;cursor:pointer;box-shadow:0 2px 8px #2224;
+      transition:background 0.2s;
+    }
+    #menu button:hover, #gameover button:hover {background:#45ea63;}
+    #controls {
+      position:fixed;bottom:14px;width:100vw;display:flex;justify-content:center;gap:18px;z-index:4;
+    }
+    .control-btn {
+      width:60px;height:60px;font-size:32px;background:#32CD32;
+      border:none;border-radius:50%;color:#fff;box-shadow:0 2px 8px #2224;
+      display:flex;align-items:center;justify-content:center;cursor:pointer;
+      transition:box-shadow 0.15s, background 0.15s;
+      user-select:none;
+    }
+    .control-btn:active {background:#45ea63;box-shadow:0 0 20px #32CD32;}
+    #alkometer-label {
+      position:fixed;top:18px;right:26vw;font-size:22px;color:#32CD32;text-shadow:1px 1px 2px #000;z-index:4;
+    }
+    #alkometer {
+      position:fixed;top:50px;right:8vw;width:220px;max-width:45vw;height:34px;
+      background:#262; border:2px solid #32CD32;border-radius:12px;overflow:hidden;z-index:4;
+    }
+    #alkometer-fill {
+      height:100%;background:#32CD32;width:0;
+      border-radius:9px 0 0 9px;transition:width 0.2s cubic-bezier(.44,1.32,.81,1);
+      will-change:width,transform;
+    }
+    #scorebar {
+      position:fixed;top:16px;left:24px;z-index:4;color:#32CD32;
+      font-size:24px;text-shadow:1px 1px 3px #000;
+    }
+    #loading {font-size:32px;color:#32CD32;}
+    canvas {display:block;}
+    @media (max-width:700px) {
+      #alkometer {width:120px;}
+      #scorebar {font-size:18px;}
+      .control-btn {width:42px;height:42px;font-size:20px;}
+      #alkometer-label {font-size:15px;}
+    }
+  </style>
 </head>
 <body>
-    <div id="menu">
-        <h1>Rodeo Pfeffi Challenge</h1>
-        <button id="startBtn">Start Game</button>
-    </div>
-    <canvas id="gameCanvas"></canvas>
-    <div id="controls" style="display: none;">
-        <button class="control-button" id="leftButton">◀</button>
-        <button class="control-button" id="rightButton">▶</button>
-        <button class="control-button" id="jumpButton">⮝</button>
-    </div>
-    <div id="alkometer-label">Alk-O-Meter</div>
-    <div id="alkometer">
-        <div id="alkometer-fill"></div>
-    </div>
-    <audio id="gameAudio" src="KI_Pfeffi.m4a" loop></audio>
-    <script>
-        // --- Canvas Setup ---
-        const canvas = document.getElementById('gameCanvas');
-        const ctx = canvas.getContext('2d');
-        function resizeCanvas() {
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight;
-        }
-        window.addEventListener('resize', resizeCanvas);
-        resizeCanvas();
+  <div id="loading">Wird geladen...</div>
+  <div id="menu" style="display:none;">
+    <h1>Rodeo Pfeffi Challenge</h1>
+    <p>Sammle so viele Pfeffi-Flaschen wie möglich!<br>
+    Nutze die Tasten <b>◀ ▶ ⮝</b> oder die Buttons.<br>
+    Weiche Betrunkenen aus.<br><i>Schaffst du einen Highscore?</i></p>
+    <button id="startBtn">Spiel starten</button>
+    <div id="highscoreMenu"></div>
+  </div>
+  <div id="gameover" style="display:none;">
+    <h1>Game Over!</h1>
+    <p id="finalscore"></p>
+    <button id="restartBtn">Nochmal spielen</button>
+    <button id="backMenuBtn">Zurück zum Menü</button>
+    <div id="highscoreGameOver"></div>
+  </div>
+  <div id="scorebar"></div>
+  <div id="alkometer-label">Alk-O-Meter</div>
+  <div id="alkometer"><div id="alkometer-fill"></div></div>
+  <div id="controls" style="display:none;">
+    <button class="control-btn" id="leftBtn">◀</button>
+    <button class="control-btn" id="rightBtn">▶</button>
+    <button class="control-btn" id="jumpBtn">⮝</button>
+  </div>
+  <canvas id="gameCanvas"></canvas>
+  <!-- Sounds optional; du kannst deine eigenen Files nehmen -->
+  <audio id="plop" src="https://cdn.pixabay.com/audio/2022/10/16/audio_12b2edff44.mp3"></audio>
+  <audio id="fail" src="https://cdn.pixabay.com/audio/2022/07/26/audio_124b6aa76a.mp3"></audio>
+  <script>
+    // --- Assets laden ---
+    const images = {};
+    const imgSrc = {
+      player: "Ringo.png",       // ersetzen oder Platzhalter nehmen
+      bottle: "Pfeffi.png",      // ersetzen oder Platzhalter nehmen
+      drunk: "drunk1.png",       // ersetzen oder Platzhalter nehmen
+      bg: "Background.png"       // ersetzen oder Platzhalter nehmen
+    };
+    let loaded = 0;
+    const toLoad = Object.keys(imgSrc).length;
+    function showLoading() { document.getElementById("loading").style.display = "flex"; }
+    function hideLoading() { document.getElementById("loading").style.display = "none"; }
+    showLoading();
+    for (let key in imgSrc) {
+      images[key] = new Image();
+      images[key].src = imgSrc[key];
+      images[key].onload = onAsset;
+      images[key].onerror = function() {
+        // Placeholder, wenn Bild fehlt
+        const cvs = document.createElement('canvas'); cvs.width=100;cvs.height=100;
+        let c = cvs.getContext('2d');
+        c.fillStyle='#666'; c.fillRect(0,0,100,100); c.fillStyle='#fff';c.font='24px Arial';c.fillText(key,12,60);
+        images[key].src = cvs.toDataURL();
+        onAsset();
+      };
+    }
+    function onAsset() {
+      loaded++;
+      if (loaded === toLoad) { setTimeout(initGame, 200); }
+    }
 
-        // --- UI Elements ---
-        const audio = document.getElementById('gameAudio');
-        const controls = document.getElementById('controls');
-        const leftBtn = document.getElementById('leftButton');
-        const rightBtn = document.getElementById('rightButton');
-        const jumpBtn = document.getElementById('jumpButton');
-        const alkoFill = document.getElementById('alkometer-fill');
-        const menu = document.getElementById('menu');
-        const startBtn = document.getElementById('startBtn');
+    // --- Highscore-Logik ---
+    function getHighscore() { return +(localStorage.getItem("pfeffiHighscore")||0); }
+    function setHighscore(s) { localStorage.setItem("pfeffiHighscore", s); }
+    function showHighscore(where) {
+      const h = getHighscore();
+      document.getElementById(where).innerHTML =
+        h>0 ? `Highscore: <b>${h}</b>` : "";
+    }
 
-        // --- Images ---
-        const IMAGES = {};
-        const imageSources = {
-            player: 'Ringo.png',
-            bottle: 'Pfeffi.png',
-            drunk: 'drunk1.png',
-            background: 'Background.png'
-        };
-        let loadedImages = 0;
-        function loadImages(sources, callback) {
-            let numImages = Object.keys(sources).length;
-            for (const key in sources) {
-                IMAGES[key] = new Image();
-                IMAGES[key].onload = () => {
-                    loadedImages++;
-                    if (loadedImages === numImages) callback();
-                };
-                IMAGES[key].src = sources[key];
-            }
-        }
+    // --- Game Variablen ---
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    function resize() {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    }
+    window.addEventListener("resize", resize);
+    resize();
 
-        // --- Game Constants ---
-        const LEVEL_WIDTH = 3000;
-        const PLAYER_WIDTH = 100, PLAYER_HEIGHT = 100;
-        const BOTTLE_WIDTH = 40, BOTTLE_HEIGHT = 80, BOTTLE_SPEED = 3;
-        const DRUNK_WIDTH = 70, DRUNK_HEIGHT = 70, DRUNK_COUNT = 5;
-        const GAME_DURATION = 90; // Sekunden
+    // Game-Objekte als Klassen
+    class Player {
+      constructor() {
+        this.width = 100; this.height = 100;
+        this.x = canvas.width/2-this.width/2;
+        this.y = canvas.height-200;
+        this.vx = 0; this.vy = 0;
+        this.ax = 0; // für inertia
+        this.speed = 1.2; // acceleration
+        this.maxSpeed = 15;
+        this.friction = 0.90; // inertia
+        this.jumpP = 25;
+        this.gravity = 1.7;
+        this.onGround = true;
+        this.dir = 'right';
+        this.bounce = 0;
+        this.torkelAmount = 0;
+      }
+      update() {
+        // Torkeln
+        if (this.torkelAmount>0) this.x += (Math.random()-0.5)*this.torkelAmount;
+        // Links/rechts mit inertia
+        this.vx += this.ax;
+        this.vx *= this.friction;
+        if (Math.abs(this.vx)<0.5) this.vx = 0;
+        this.x += this.vx;
+        // Grenzen
+        if (this.x<0) { this.x=0; this.vx=0; }
+        if (this.x+this.width>LEVEL) { this.x=LEVEL-this.width; this.vx=0; }
+        // Sprung
+        if (!this.onGround) {
+          this.vy += this.gravity;
+          this.y += this.vy;
+          if (this.y>=canvas.height-200) {
+            this.y=canvas.height-200;
+            this.vy = 0;
+            this.onGround = true;
+            this.bounce = 8; // bounce Effekt
+          }
+        }
+        // Bounce
+        if (this.bounce>0) {
+          this.y -= Math.sin(this.bounce)*2;
+          this.bounce -= 0.3;
+          if (this.bounce<0) this.bounce=0;
+        }
+      }
+      draw() {
+        ctx.save(); ctx.translate(-cameraX,0);
+        if (this.dir==='left') {
+          ctx.scale(-1,1);
+          ctx.drawImage(images.player, -this.x-this.width, this.y, this.width, this.height);
+        } else {
+          ctx.drawImage(images.player, this.x, this.y, this.width, this.height);
+        }
+        ctx.restore();
+      }
+      jump() {
+        if (this.onGround) {
+          this.vy = -this.jumpP;
+          this.onGround = false;
+        }
+      }
+    }
 
-        // --- Game State ---
-        let cameraX = 0;
-        let bottles = [];
-        let drunks = [];
-        let score = 0;
-        let gameTime = GAME_DURATION;
-        let gameActive = false;
-        let intervals = [];
-        let rafId;
+    class Bottle {
+      constructor(x) {
+        this.x = x;
+        this.y = -BOTTLE_H;
+        this.collected = false;
+      }
+      update() { this.y += BOTTLE_SPEED; }
+      draw() {
+        ctx.save(); ctx.translate(-cameraX,0);
+        ctx.drawImage(images.bottle, this.x, this.y, BOTTLE_W, BOTTLE_H);
+        ctx.restore();
+      }
+      isCollide(pl) {
+        return !this.collected &&
+          this.x < pl.x + pl.width && this.x + BOTTLE_W > pl.x &&
+          this.y < pl.y + pl.height && this.y + BOTTLE_H > pl.y;
+      }
+    }
 
-        const player = {
-            width: PLAYER_WIDTH, height: PLAYER_HEIGHT,
-            x: canvas.width / 2 - PLAYER_WIDTH / 2,
-            y: canvas.height - 200,
-            speed: 15,
-            jumpPower: 25,
-            gravity: 1.5,
-            velocityY: 0,
-            velocityX: 0,
-            onGround: true,
-            direction: 'right',
-            autoMove: true,
-            torkelAmount: 0
-        };
+    class Drunk {
+      constructor(x) {
+        this.x = x;
+        this.y = canvas.height-160;
+      }
+      draw() {
+        ctx.save(); ctx.translate(-cameraX,0);
+        ctx.drawImage(images.drunk, this.x, this.y, DRUNK_W, DRUNK_H);
+        ctx.restore();
+      }
+      isCollide(pl) {
+        return this.x < pl.x + pl.width && this.x + DRUNK_W > pl.x &&
+               this.y < pl.y + pl.height && this.y + DRUNK_H > pl.y;
+      }
+    }
 
-        // --- Utility Functions ---
-        function resetGameState() {
-            bottles = [];
-            drunks = [];
-            score = 0;
-            gameTime = GAME_DURATION;
-            cameraX = 0;
-            player.x = canvas.width / 2 - PLAYER_WIDTH / 2;
-            player.y = canvas.height - 200;
-            player.velocityY = 0;
-            player.velocityX = 0;
-            player.onGround = true;
-            player.direction = 'right';
-            player.autoMove = false;
-            player.torkelAmount = 0;
-            clearAllIntervals();
-            cancelAnimationFrame(rafId);
-        }
-        function clearAllIntervals() {
-            intervals.forEach(i => clearInterval(i));
-            intervals = [];
-        }
-
-        // --- Drawing ---
-        function drawBackground() {
-            ctx.save();
-            ctx.translate(-cameraX, 0);
-            ctx.drawImage(IMAGES.background, 0, 0, LEVEL_WIDTH, canvas.height);
-            ctx.restore();
-        }
-        function drawPlayer() {
-            ctx.save();
-            ctx.translate(-cameraX, 0);
-            if (player.direction === 'left') {
-                ctx.scale(-1, 1);
-                ctx.drawImage(IMAGES.player, -player.x - player.width, player.y, player.width, player.height);
-            } else {
-                ctx.drawImage(IMAGES.player, player.x, player.y, player.width, player.height);
-            }
-            ctx.restore();
-        }
-        function drawBottle(bottle) {
-            ctx.save();
-            ctx.translate(-cameraX, 0);
-            ctx.drawImage(IMAGES.bottle, bottle.x, bottle.y, BOTTLE_WIDTH, BOTTLE_HEIGHT);
-            ctx.restore();
-        }
-        function drawDrunk(drunk) {
-            ctx.save();
-            ctx.translate(-cameraX, 0);
-            ctx.drawImage(IMAGES.drunk, drunk.x, drunk.y, drunk.width, drunk.height);
-            ctx.restore();
-        }
-        function drawScore() {
-            ctx.fillStyle = '#32CD32';
-            ctx.font = '24px Arial';
-            ctx.fillText(`Score: ${score}`, 10, 30);
-            ctx.fillText(`Time: ${gameTime}`, 10, 60);
-        }
-
-        // --- Logic ---
-        function spawnBottle() {
-            const x = Math.random() * (LEVEL_WIDTH - BOTTLE_WIDTH);
-            bottles.push({ x, y: 0 });
-        }
-        function spawnDrunks() {
-            for (let i = 0; i < DRUNK_COUNT; i++) {
-                const x = Math.random() * (LEVEL_WIDTH - DRUNK_WIDTH);
-                drunks.push({ x, y: canvas.height - 170, width: DRUNK_WIDTH, height: DRUNK_HEIGHT });
-            }
-        }
-        function updateBottles() {
-            for (let i = bottles.length - 1; i >= 0; i--) {
-                bottles[i].y += BOTTLE_SPEED;
-                // Remove bottle if below screen
-                if (bottles[i].y > canvas.height) {
-                    bottles.splice(i, 1);
-                    continue;
-                }
-                // Collision with player
-                if (
-                    bottles[i].x < player.x + player.width &&
-                    bottles[i].x + BOTTLE_WIDTH > player.x &&
-                    bottles[i].y < player.y + player.height &&
-                    bottles[i].y + BOTTLE_HEIGHT > player.y
-                ) {
-                    score++;
-                    updateAlkometer();
-                    bottles.splice(i, 1);
-                }
-            }
-        }
-        function updateAlkometer() {
-            const fillPerc = Math.min(score / 30, 1);
-            alkoFill.style.width = (fillPerc * 100) + '%';
-            player.torkelAmount = fillPerc * 20;
-        }
-        function applyGravity() {
-            if (!player.onGround) {
-                player.y += player.velocityY;
-                player.x += player.velocityX;
-                player.velocityY += player.gravity;
-                if (player.y >= canvas.height - 200) {
-                    player.y = canvas.height - 200;
-                    player.onGround = true;
-                    player.velocityY = 0;
-                    player.velocityX = 0;
-                }
-            }
-        }
-        function checkDrunkCollision() {
-            for (const drunk of drunks) {
-                if (
-                    player.x < drunk.x + drunk.width &&
-                    player.x + player.width > drunk.x &&
-                    player.y < drunk.y + drunk.height &&
-                    player.y + player.height > drunk.y
-                ) {
-                    if (player.direction === 'left') {
-                        player.x = drunk.x + drunk.width;
-                    } else {
-                        player.x = drunk.x - player.width;
-                    }
-                    updateCamera();
-                }
-            }
-        }
-        function torkel() {
-            if (score > 0) {
-                player.x += (Math.random() - 0.5) * player.torkelAmount;
-                updateCamera();
-            }
-        }
-        function updateCamera() {
-            cameraX = Math.max(0, Math.min(player.x - canvas.width / 2 + player.width / 2, LEVEL_WIDTH - canvas.width));
-        }
-
-        // --- Input ---
-        function movePlayer(e) {
-            if (!gameActive) return;
-            player.autoMove = false;
-            const move = player.speed;
-            if (['ArrowLeft', 'a', 'A'].includes(e.key)) {
-                player.x -= move;
-                player.direction = 'left';
-            } else if (['ArrowRight', 'd', 'D'].includes(e.key)) {
-                player.x += move;
-                player.direction = 'right';
-            } else if ((e.key === ' ' || e.key === 'Spacebar') && player.onGround) {
-                jump();
-            }
-            updateCamera();
-        }
-        function jump() {
-            if (player.onGround) {
-                player.velocityY = -player.jumpPower;
-                player.velocityX = player.direction === 'left' ? -player.speed : player.speed;
-                player.onGround = false;
-            }
-        }
-        function handleTouch(e) {
-            if (!gameActive) return;
-            if (e.touches.length > 0) {
-                const touch = e.touches[0];
-                player.autoMove = false;
-                if (touch.clientX < canvas.width / 2) {
-                    player.x -= player.speed;
-                    player.direction = 'left';
-                } else {
-                    player.x += player.speed;
-                    player.direction = 'right';
-                }
-                updateCamera();
-            }
-        }
-
-        // --- Controls (mobile/desktop) ---
-        leftBtn.addEventListener('touchstart', e => { e.preventDefault(); player.autoMove = false; player.x -= player.speed; player.direction = 'left'; updateCamera(); });
-        rightBtn.addEventListener('touchstart', e => { e.preventDefault(); player.autoMove = false; player.x += player.speed; player.direction = 'right'; updateCamera(); });
-        jumpBtn.addEventListener('touchstart', e => { e.preventDefault(); jump(); });
-
-        window.addEventListener('keydown', movePlayer);
-        window.addEventListener('touchstart', handleTouch);
-
-        // --- Main Game Loop ---
-        function gameLoop() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            drawBackground();
-            drawPlayer();
-            updateBottles();
-            bottles.forEach(drawBottle);
-            drunks.forEach(drawDrunk);
-            drawScore();
-            applyGravity();
-            checkDrunkCollision();
-            rafId = requestAnimationFrame(gameLoop);
-        }
-
-        // --- Menu Animation ---
-        function menuAnimation() {
-            // Player läuft automatisch links/rechts im Menü
-            player.autoMove = true;
-            const switchDir = setInterval(() => { player.direction = (player.direction === 'left') ? 'right' : 'left'; }, 2000);
-            const anim = setInterval(() => {
-                ctx.clearRect(0, 0, canvas.width, canvas.height);
-                drawBackground();
-                if (player.autoMove) {
-                    if (player.direction === 'left') {
-                        player.x -= player.speed;
-                        if (player.x < 0) {
-                            player.x = 0;
-                            player.direction = 'right';
-                        }
-                    } else {
-                        player.x += player.speed;
-                        if (player.x + player.width > LEVEL_WIDTH) {
-                            player.x = LEVEL_WIDTH - player.width;
-                            player.direction = 'left';
-                        }
-                    }
-                    updateCamera();
-                }
-                drawPlayer();
-            }, 100);
-            intervals.push(anim, switchDir);
-        }
-
-        // --- Game Start ---
-        function startGame() {
-            resetGameState();
-            menu.style.display = 'none';
-            canvas.style.display = 'block';
-            controls.style.display = 'flex';
-            gameActive = true;
-
-            // Start Audio
-            audio.volume = 0.6;
-            audio.play().catch(() => { /* silent error */ });
-
-            // Spawn Drunks
-            spawnDrunks();
-
-            // Timers
-            intervals.push(setInterval(spawnBottle, 1000));
-            intervals.push(setInterval(torkel, 100));
-            intervals.push(setInterval(() => {
-                gameTime--;
-                if (gameTime <= 0) {
-                    endGame();
-                }
-            }, 1000));
-
-            gameLoop();
-        }
-
-        function endGame() {
-            gameActive = false;
-            clearAllIntervals();
-            cancelAnimationFrame(rafId);
-            setTimeout(() => {
-                alert('Game Over! Your score: ' + score);
-                location.reload();
-            }, 200);
-        }
-
-        // --- Init: Images + Menü + Audio ---
-        loadImages(imageSources, () => {
-            // Init player pos
-            player.x = canvas.width / 2 - PLAYER_WIDTH / 2;
-            player.y = canvas.height - 200;
-            menuAnimation();
+    // --- Partikeleffekt für eingesammelte Flaschen
+    let particles = [];
+    function spawnParticles(x,y) {
+      for(let i=0;i<14;i++) {
+        particles.push({
+          x: x, y: y, vx: (Math.random()-0.5)*7, vy: (Math.random()-0.9)*7,
+          alpha: 1, color:'#9fffb7'
         });
+      }
+    }
+    function updateParticles() {
+      for(let i=particles.length-1;i>=0;i--) {
+        let p=particles[i];
+        p.x+=p.vx; p.y+=p.vy; p.alpha*=0.92; p.vy+=0.3;
+        if(p.alpha<.1) particles.splice(i,1);
+      }
+    }
+    function drawParticles() {
+      ctx.save();
+      for(let p of particles) {
+        ctx.globalAlpha=p.alpha;
+        ctx.beginPath();
+        ctx.arc(p.x-cameraX,p.y,5,0,7);
+        ctx.fillStyle=p.color; ctx.fill();
+      }
+      ctx.globalAlpha=1; ctx.restore();
+    }
 
-        // --- UI: Start-Button ---
-        startBtn.onclick = () => {
-            clearAllIntervals();
-            startGame();
-        };
+    // --- Spielkonstanten ---
+    const LEVEL = 3000;
+    const BOTTLE_W = 44, BOTTLE_H = 80, BOTTLE_SPEED = 3.5;
+    const DRUNK_W = 70, DRUNK_H = 70;
+    const GAME_TIME = 90;
 
-        // --- Autoplay fix for Audio (Mobile) ---
-        window.onload = () => {
-            audio.play().catch(() => {});
-        };
-    </script>
+    // --- Game State ---
+    let cameraX = 0;
+    let bottles = [], drunks = [];
+    let score = 0, timeLeft = GAME_TIME, highscore=0;
+    let player, gameOn=false, gameOver=false, timerId;
+    let shakeT = 0;
+
+    // --- Input ---
+    function key(e,down) {
+      if(!gameOn) return;
+      if(["ArrowLeft","a","A"].includes(e.key)) { player.ax = down ? -player.speed : 0; player.dir='left'; }
+      if(["ArrowRight","d","D"].includes(e.key)) { player.ax = down ? player.speed : 0; player.dir='right'; }
+      if((e.key===" "||e.key==="Spacebar") && down) player.jump();
+    }
+    window.addEventListener("keydown",e=>key(e,true));
+    window.addEventListener("keyup",e=>key(e,false));
+    document.getElementById('leftBtn').addEventListener("touchstart",e=>{e.preventDefault();player.ax=-player.speed;player.dir='left';});
+    document.getElementById('leftBtn').addEventListener("touchend",e=>{e.preventDefault();player.ax=0;});
+    document.getElementById('rightBtn').addEventListener("touchstart",e=>{e.preventDefault();player.ax=player.speed;player.dir='right';});
+    document.getElementById('rightBtn').addEventListener("touchend",e=>{e.preventDefault();player.ax=0;});
+    document.getElementById('jumpBtn').addEventListener("touchstart",e=>{e.preventDefault();player.jump();});
+
+    // --- Game Loop ---
+    function loop() {
+      ctx.clearRect(0,0,canvas.width,canvas.height);
+      // Hintergrund
+      ctx.save(); ctx.translate(-cameraX,0);
+      ctx.drawImage(images.bg,0,0,LEVEL,canvas.height);
+      ctx.restore();
+
+      // Elemente
+      for(let b of bottles) b.draw();
+      for(let d of drunks) d.draw();
+      player.draw();
+      drawParticles();
+
+      // Effekte
+      if(shakeT>0) {
+        ctx.save();
+        ctx.globalAlpha = Math.min(0.4, shakeT/20);
+        ctx.fillStyle="#fff";
+        ctx.fillRect(0,0,canvas.width,canvas.height);
+        ctx.restore();
+        shakeT--;
+      }
+
+      // Update-Logik
+      player.update();
+      for(let b of bottles) b.update();
+      updateParticles();
+      bottles = bottles.filter(b=>b.y<canvas.height+100 && !b.collected);
+      // Kollisionsprüfung: Flasche
+      for(let b of bottles) {
+        if(b.isCollide(player)) {
+          b.collected=true; score++;
+          document.getElementById('plop').currentTime=0;document.getElementById('plop').play();
+          spawnParticles(b.x+BOTTLE_W/2,b.y+40);
+          // Alk-O-Meter shake
+          let alk = document.getElementById('alkometer-fill');
+          alk.style.transform="scaleY(1.18)";
+          setTimeout(()=>alk.style.transform="scaleY(1)",100);
+        }
+      }
+      // Kollisionsprüfung: Betrunkener
+      for(let d of drunks) {
+        if(d.isCollide(player)) {
+          shakeT=10;
+          document.getElementById('fail').currentTime=0;document.getElementById('fail').play();
+          // Rückstoß
+          if(player.dir==='left') player.x=d.x+DRUNK_W+6;
+          else player.x=d.x-player.width-6;
+        }
+      }
+
+      // Kamera folgt Spieler (zentriert, aber limitiert)
+      cameraX = Math.max(0, Math.min(player.x + player.width/2 - canvas.width/2, LEVEL-canvas.width));
+
+      // Alk-O-Meter
+      let perc = Math.min(score/30,1);
+      let alk = document.getElementById('alkometer-fill');
+      alk.style.width = (perc*100)+'%';
+      player.torkelAmount = perc*20;
+
+      // Score & Timer
+      document.getElementById('scorebar').innerHTML = `Score: ${score} &nbsp;|&nbsp; Time: ${timeLeft}s`;
+
+      // Respawn Bottles/Drunks
+      if(Math.random()<0.025) bottles.push(new Bottle(Math.random()*(LEVEL-BOTTLE_W)));
+      // Optional: goldene Flasche
+      //if(Math.random()<0.001) { /*...*/ }
+      // Respawn Drunks seltener
+      if(drunks.length<5 && Math.random()<0.005) drunks.push(new Drunk(Math.random()*(LEVEL-DRUNK_W)));
+
+      if(gameOn) requestAnimationFrame(loop);
+    }
+
+    // --- Start/Restart/Ende ---
+    function startGame() {
+      bottles = [];
+      drunks = [];
+      particles = [];
+      score=0;
+      timeLeft=GAME_TIME;
+      player = new Player();
+      for(let i=0;i<6;i++) bottles.push(new Bottle(Math.random()*(LEVEL-BOTTLE_W)));
+      for(let i=0;i<4;i++) drunks.push(new Drunk(Math.random()*(LEVEL-DRUNK_W)));
+      cameraX=0;
+      document.getElementById('menu').style.display="none";
+      document.getElementById('gameover').style.display="none";
+      document.getElementById('controls').style.display="flex";
+      document.getElementById('scorebar').style.display="block";
+      gameOn=true; gameOver=false;
+      timerId = setInterval(()=>{
+        timeLeft--;
+        if(timeLeft<=0) endGame();
+      },1000);
+      loop();
+    }
+
+    function endGame() {
+      gameOn=false;gameOver=true;
+      clearInterval(timerId);
+      document.getElementById('controls').style.display="none";
+      document.getElementById('scorebar').style.display="none";
+      document.getElementById('gameover').style.display="flex";
+      document.getElementById('finalscore').innerHTML = `Dein Score: <b>${score}</b>`;
+      if(score>getHighscore()) setHighscore(score);
+      showHighscore('highscoreGameOver');
+    }
+
+    // --- Menü ---
+    function showMenu() {
+      document.getElementById('menu').style.display="flex";
+      document.getElementById('gameover').style.display="none";
+      document.getElementById('controls').style.display="none";
+      document.getElementById('scorebar').style.display="none";
+      showHighscore('highscoreMenu');
+    }
+    document.getElementById('startBtn').onclick=()=>{
+      hideLoading(); startGame();
+    };
+    document.getElementById('restartBtn').onclick=()=>{
+      startGame();
+    };
+    document.getElementById('backMenuBtn').onclick=()=>{
+      showMenu();
+    };
+
+    // --- Init, Menü nach Ladezeit ---
+    function initGame() {
+      hideLoading();
+      showMenu();
+    }
+  </script>
 </body>
 </html>
